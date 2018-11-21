@@ -1,6 +1,7 @@
 #! python3
 
 import os
+import sys
 from tkinter import *
 from tkinter import _setit,filedialog
 from tkinter.ttk import *
@@ -9,14 +10,19 @@ import PyPDF2
 import subprocess
 
 
+f = open(os.devnull, 'w') # change for debug
+sys.stderr=sys.stdout = f # must redirect stderr/stdout in .pyw files, since theres no terminal
+
 class pdfLine():
     # Defines a GUI line with file input, and start/end buttons to pick pages
     def __init__(self,app,name,lineNum):
+	    # initiate all of the line's widgets, and add them to the grid in line "lineNum"
+        self.lineNum = lineNum
         self.label = [Label(app,text=name)]
         self.label[0].grid(row=lineNum,column=0)
         self.file = Entry(app,state='readonly')
         self.file.grid(row=lineNum,column=1)
-        self.dir_button = Button(app,text='...',command=lambda: self.pdfBrowse(lineNum))
+        self.dir_button = Button(app,text='...',command= self.pdfBrowse) # make a button with press action - call self.pdfBrowse()
         self.dir_button.grid(row=lineNum,column=2)
         self.PageStart = StringVar(app)
         self.PageEnd = StringVar(app)
@@ -30,6 +36,7 @@ class pdfLine():
         self.endPop.grid(row=lineNum,column=6)
 
     def grid_remove(self):
+	    # remove all of the line's widgets from the grid
         for label in self.label:
             label.grid_forget()
         self.file.grid_forget()
@@ -37,7 +44,8 @@ class pdfLine():
         self.startPop.grid_forget()
         self.endPop.grid_forget()
 
-    def pdfBrowse(self,lineNum):
+    def pdfBrowse(self):
+        # used for the '...' button, opens a file dialog to get pdf name, and puts it into the entry
         dir = filedialog.askopenfilename(filetypes=[("PDF Files","*.pdf")])
         if dir == '':
             return
@@ -45,17 +53,18 @@ class pdfLine():
         self.file.delete(0,'end')
         self.file.insert(0,dir)
         self.file.configure(state='readonly')
-        self.pdfPageOptions(lineNum)
+        self.pdfPageOptions() 
 
-    def pdfPageOptions(self,lineNum):
+    def pdfPageOptions(self):
+        # update the start/end options with relevant page numbers
         pdfFile = open(self.file.get(),'rb')
         pdfReader = PyPDF2.PdfFileReader(pdfFile)
-        pageNum = pdfReader.numPages
-        self.startPop['menu'].delete(0,'end')
+        pageNum = pdfReader.getNumPages()
+        self.startPop['menu'].delete(0,'end') # remove old options from start/end
         self.PageStart.set('')
         self.endPop['menu'].delete(0,'end')
         self.PageEnd.set('')
-        for i in range(1,pageNum+1):
+        for i in range(1,pageNum+1): # add the new options
             self.startPop['menu'].add_command(label=i, command=_setit(self.PageStart, i))
             self.endPop['menu'].add_command(label=i, command=_setit(self.PageEnd, i))
 
@@ -71,11 +80,12 @@ class pdfLine():
 class outLine():
     # Defines a GUI line with output folder and output filename input
     def __init__(self,app,name,lineNum):
+        # initiate all of the line's widgets, and add them to the grid in line "lineNum"
         self.name_label = Label(app,text=name)
         self.name_label.grid(row=lineNum,column=0)
         self.dir = Entry(app,state='readonly')
         self.dir.grid(row=lineNum,column=1)
-        self.dir_button = Button(app,text='...',command=lambda: self.outBrowse())
+        self.dir_button = Button(app,text='...',command= self.outBrowse)
         self.dir_button.grid(row=lineNum,column=2)
         self.out_label = Label(app,text='File name:')
         self.out_label.grid(row=lineNum,column=3)
@@ -84,6 +94,7 @@ class outLine():
         self.outName.grid(row=lineNum,column=4,columnspan=3)
 
     def grid_remove(self):
+        # remove all of the line's widgets from the grid
         self.name_label.grid_forget()
         self.dir.grid_forget()
         self.dir_button.grid_forget()
@@ -91,6 +102,7 @@ class outLine():
         self.outName.grid_forget()
 
     def outBrowse(self):
+        # used for the '...' button
         dir = filedialog.askdirectory()
         if dir == '':
             return
@@ -107,7 +119,9 @@ class outLine():
 
 
 class Application(Frame):
+    # main window class
     def __init__(self,master=None):
+        # initiate main window, and add first line
         super().__init__(master)
         self.grid()
         self.Line = []
@@ -115,14 +129,18 @@ class Application(Frame):
         self.fileNum()
 
     def fileNum(self):
+        # adds the first line, defaulted to 2 files
         lineNum = len(self.Line)
+        default = 2
+        maxFiles = 9
         Label(self,text='Number of files:').grid(row=lineNum,column=0)
         self.numFiles= StringVar(self)
-        self.Line.append(OptionMenu(self,self.numFiles,'2',*tuple(range(1,10)),command=self.addFileLines))
-        self.Line[lineNum].grid(row=lineNum,column=1)
-        self.addFileLines(2)
+        self.Line.append(OptionMenu(self,self.numFiles,str(default),*tuple(range(1,maxFiles)),command=self.addFileLines))
+        self.Line[-1].grid(row=lineNum,column=1)
+        self.addFileLines(default) # add the rest of the lines
 
     def addFileLines(self,num):
+        # add/remove file input lines to match *num* input lines, followed by output line and Merge button
         length = len(self.Line)
         if length == 1: # only file amount line exists
             fileLines = 0
