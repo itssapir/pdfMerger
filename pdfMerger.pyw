@@ -144,11 +144,12 @@ class Application(Frame):
         length = len(self.Line)
         if length == 1: # only file amount line exists
             fileLines = 0
-        if length > 1:  # there are atleast 4 lines, file amount, file output, merge button, atleast 1 input line
+        if length > 1:  # there are atleast 4 lines: file amount, file output, merge button, atleast 1 input line
             fileLines = length-3
             if fileLines == num:
                 return
             else:
+                # delete output/button lines and spare input lines if needed
                 self.Line[-2].grid_remove()
                 del self.Line[-2]
                 self.Line[-1].grid_remove()
@@ -165,6 +166,7 @@ class Application(Frame):
         self.create_action("Merge",self.mergePages)
 
     def create_input(self,name,Type='Standard'):
+        # wrapper function for creating different user-input lines
         lineNum = len(self.Line)
         if Type == 'Standard':
             Label(self,text=name).grid(row=lineNum,column=0)
@@ -176,31 +178,35 @@ class Application(Frame):
             self.Line.append(outLine(self,name,lineNum))
 
     def create_action(self,name,func):
+        # wrapper function for creating different action lines, only adds Merge button at the moment
         self.Line.append(Button(self,text=name,command=func))
         self.Line[-1].grid(column=5,columnspan=2)
 
     def mergePages(self):
-        pdfWriter = PyPDF2.PdfFileWriter()
+        # get all the arguments given, and merge the relevant pages
+        # TODO - variable check, error popup
+        pdfWriter = PyPDF2.PdfFileWriter() # pdf object for the output pdf
         pdffiles = []
         for line in self.Line:
             if type(line) is not pdfLine:
                 continue
             pdffiles.append(open(line.getEntry('dir'),'rb'))
-            pdfreader = PyPDF2.PdfFileReader(pdffiles[-1])
+            pdfreader = PyPDF2.PdfFileReader(pdffiles[-1]) # pdf object for the file in the current line
             start = int(line.getEntry('start'))
             end = int(line.getEntry('end'))
-            pages = range(start,end+1) if start<end else range(start,end-1,-1)
+            pages = range(start,end+1) if start<end else range(start,end-1,-1) # determine the page range, and direction (normal/backwards)
             for pagenum in pages:
                 pdfWriter.addPage(pdfreader.getPage(pagenum-1)) # pages begin at 0
         outname = os.path.join(self.Line[-2].getEntry('dir'),self.Line[-2].getEntry('out'))+'.pdf'
         pdfout = open(outname,'wb')
-        pdfWriter.write(pdfout)
+        pdfWriter.write(pdfout) # write the new pdf to pdfout
         pdfout.close()
         for file in pdffiles:
             file.close()
-        subprocess.Popen(outname,shell=True)
+        subprocess.Popen(outname,shell=True) # open output pdf for preview by the user
 
 
+# main tkinter loop        
 root = ThemedTk()
 root.title("PDF Merger")
 root.set_theme('arc')
