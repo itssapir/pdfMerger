@@ -60,10 +60,12 @@ class pdfLine():
         pdfFile = open(self.file.get(),'rb')
         pdfReader = PyPDF2.PdfFileReader(pdfFile)
         pageNum = pdfReader.getNumPages()
+        if pageNum == 0:
+            return
         self.startPop['menu'].delete(0,'end') # remove old options from start/end
-        self.PageStart.set('')
+        self.PageStart.set('1')
         self.endPop['menu'].delete(0,'end')
-        self.PageEnd.set('')
+        self.PageEnd.set(pageNum)
         for i in range(1,pageNum+1): # add the new options
             self.startPop['menu'].add_command(label=i, command=_setit(self.PageStart, i))
             self.endPop['menu'].add_command(label=i, command=_setit(self.PageEnd, i))
@@ -198,11 +200,12 @@ class Application(Frame):
             for pagenum in pages:
                 pdfWriter.addPage(pdfreader.getPage(pagenum-1)) # pages begin at 0
         outname = os.path.join(self.Line[-2].getEntry('dir'),self.Line[-2].getEntry('out'))+'.pdf'
-        pdfout = open(outname,'wb')
+        pdfout = open(outname+'.temp','wb')
         pdfWriter.write(pdfout) # write the new pdf to pdfout
         pdfout.close()
         for file in pdffiles:
             file.close()
+        os.replace(outname+'.temp',outname)
         subprocess.Popen(outname,shell=True) # open output pdf for preview by the user
 
 

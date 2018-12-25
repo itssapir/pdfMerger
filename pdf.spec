@@ -4,9 +4,9 @@ block_cipher = None
 
 
 a = Analysis(['pdfMerger.pyw'],
-             pathex=['C:\\Users\\itssa\\Desktop'],
+             pathex=['C:\\Users\\Sapir\\pdfMerger\\'],
              binaries=[],
-             datas= [('C:\\Users\\itssa\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\ttkthemes', 'ttkthemes')],
+             datas= [('C:\\Users\\Sapir\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\ttkthemes', 'ttkthemes')],
              hiddenimports=['ttkthemes'],
              hookspath=[],
              runtime_hooks=[],
