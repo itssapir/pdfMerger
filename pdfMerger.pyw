@@ -60,6 +60,7 @@ class pdfLine():
         pdfFile = open(self.file.get(),'rb')
         pdfReader = PyPDF2.PdfFileReader(pdfFile)
         pageNum = pdfReader.getNumPages()
+        pdfFile.close()
         if pageNum == 0:
             return
         self.startPop['menu'].delete(0,'end') # remove old options from start/end
@@ -134,10 +135,10 @@ class Application(Frame):
         # adds the first line, defaulted to 2 files
         lineNum = len(self.Line)
         default = 2
-        maxFiles = 9
+        maxFiles = 15
         Label(self,text='Number of files:').grid(row=lineNum,column=0)
         self.numFiles= StringVar(self)
-        self.Line.append(OptionMenu(self,self.numFiles,str(default),*tuple(range(1,maxFiles)),command=self.addFileLines))
+        self.Line.append(OptionMenu(self,self.numFiles,str(default),*tuple(range(1,maxFiles+1)),command=self.addFileLines))
         self.Line[-1].grid(row=lineNum,column=1)
         self.addFileLines(default) # add the rest of the lines
 
