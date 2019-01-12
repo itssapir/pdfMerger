@@ -9,6 +9,7 @@ from ttkthemes.themed_tk import *
 import tkinter.messagebox as messagebox
 import PyPDF2
 import subprocess
+import img2pdf
 
 f = open(os.devnull, 'w')  # change for debug
 sys.stderr = sys.stdout = f  # must redirect stderr/stdout in .pyw files, since theres no terminal
@@ -24,7 +25,7 @@ class pdfLine():
         self.file = Entry(app, state='readonly')
         self.file.grid(row=lineNum, column=1)
         self.dir_button = Button(app, text='...',
-                                 command=self.pdfBrowse)  # make a button with press action - call self.pdfBrowse()
+                                 command=self.Browse)  # make a button with press action - call self.Browse()
         self.dir_button.grid(row=lineNum, column=2)
         self.PageStart = StringVar(app)
         self.PageEnd = StringVar(app)
@@ -46,7 +47,7 @@ class pdfLine():
         self.startPop.grid_forget()
         self.endPop.grid_forget()
 
-    def pdfBrowse(self):
+    def Browse(self):
         # used for the '...' button, opens a file dialog to get pdf name, and puts it into the entry
         dir = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
         if dir == '':
@@ -92,7 +93,7 @@ class outLine():
         self.dir.insert(0,os.getcwd())
         self.dir.configure(state='readonly')
         self.dir.grid(row=lineNum, column=1)
-        self.dir_button = Button(app, text='...', command=self.outBrowse)
+        self.dir_button = Button(app, text='...', command=self.Browse)
         self.dir_button.grid(row=lineNum, column=2)
         self.out_label = Label(app, text='File name:')
         self.out_label.grid(row=lineNum, column=3)
@@ -108,7 +109,7 @@ class outLine():
         self.out_label.grid_forget()
         self.outName.grid_forget()
 
-    def outBrowse(self):
+    def Browse(self):
         # used for the '...' button
         dir = filedialog.askdirectory()
         if dir == '':
@@ -124,7 +125,40 @@ class outLine():
         if _type == 'out':
             return self.outName.get()
 
+class FolderLine():
+    # Defines a GUI line with folder input only
+    def __init__(self, app, name, lineNum):
+        # initiate all of the line's widgets, and add them to the grid in line "lineNum"
+        self.name_label = Label(app, text=name)
+        self.name_label.grid(row=lineNum, column=0)
+        self.dir = Entry(app)
+        self.dir.insert(0,os.getcwd())
+        self.dir.configure(state='readonly')
+        self.dir.grid(row=lineNum, column=1)
+        self.dir_button = Button(app, text='...', command=self.Browse)
+        self.dir_button.grid(row=lineNum, column=2)
 
+    def grid_remove(self):
+        # remove all of the line's widgets from the grid
+        self.name_label.grid_forget()
+        self.dir.grid_forget()
+        self.dir_button.grid_forget()
+
+    def Browse(self):
+        # used for the '...' button
+        dir = filedialog.askdirectory()
+        if dir == '':
+            return
+        self.dir.configure(state='normal')
+        self.dir.delete(0, 'end')
+        self.dir.insert(0, dir)
+        self.dir.configure(state='readonly')
+
+    def getEntry(self, _type):
+        if _type == 'dir':
+            return self.dir.get()
+
+            
 class Application(Frame):
     # main window class
     def __init__(self, master=None):
@@ -143,18 +177,19 @@ class Application(Frame):
         Label(self, text='Number of files:').grid(row=lineNum, column=0)
         self.numFiles = StringVar(self)
         self.Line.append(
-            OptionMenu(self, self.numFiles, str(default), *tuple(range(1, maxFiles + 1)), command=self.addFileLines))
+            OptionMenu(self, self.numFiles, str(default), *(tuple(range(1, maxFiles + 1))+('JPG Folder',)), command=self.addFileLines))
         self.Line[-1].grid(row=lineNum, column=1)
         self.addFileLines(default)  # add the rest of the lines
 
-    def addFileLines(self, num):
+    def addFileLines(self, selection):
         # add/remove file input lines to match *num* input lines, followed by output line and Merge button
         length = len(self.Line)
+        num = 1 if selection == 'JPG Folder' else selection
         if length == 1:  # only file amount line exists
             fileLines = 0
         if length > 1:  # there are atleast 4 lines: file amount, file output, merge button, atleast 1 input line
             fileLines = length - 3
-            if fileLines == num:
+            if fileLines == num and (type(self.Line[1]) == (FolderLine if selection == 'JPG Folder' else pdfLine)):
                 return
             else:
                 # delete output/button lines and spare input lines if needed
@@ -166,12 +201,22 @@ class Application(Frame):
                 for i in range(num + 1, fileLines + 1):
                     self.Line[i].grid_remove()
                 del self.Line[num + 1:]
-
-        while fileLines < num:
-            fileLines = fileLines + 1
-            self.create_input('File ' + str(fileLines) + ':', Type='pdf')
-        self.create_input('Destination:', Type='out')
-        self.create_action("Merge", self.mergePages)
+        if selection == 'JPG Folder': # add Folder request, instead of pdf lines
+            self.Line[-1].grid_remove()
+            del self.Line[-1]
+            self.create_input('JPG Folder:', Type='JPG')
+            self.create_input('Destination:', Type='out')
+            self.create_action("Merge", self.mergeJpg)
+        else: # standard pdf merge
+            if type(self.Line[-1]) == FolderLine:
+                self.Line[-1].grid_remove()
+                del self.Line[-1]
+                fileLines -= 1
+            while fileLines < num:
+                fileLines = fileLines + 1
+                self.create_input('File ' + str(fileLines) + ':', Type='pdf')
+            self.create_input('Destination:', Type='out')
+            self.create_action("Merge", self.mergePages)
 
     def create_input(self, name, Type='Standard'):
         # wrapper function for creating different user-input lines
@@ -184,6 +229,8 @@ class Application(Frame):
             self.Line.append(pdfLine(self, name, lineNum))
         if Type == 'out':
             self.Line.append(outLine(self, name, lineNum))
+        if Type == 'JPG':
+            self.Line.append(FolderLine(self, name, lineNum))
 
     def create_action(self, name, func):
         # wrapper function for creating different action lines, only adds Merge button at the moment
@@ -225,7 +272,7 @@ class Application(Frame):
             for file in pdffiles:
                 file.close()
             return
-        if os.path.exists(outname):
+        if os.path.exists(outname): # handle file overwriting
             choice = messagebox.askyesnocancel("PDF Merger","Do you want to overwrite "+outname+" ?\n(Choosing no will create the file with a different name)")
             if choice is None:
                 for file in pdffiles:
@@ -254,7 +301,30 @@ class Application(Frame):
             return
         subprocess.Popen(outname, shell=True)  # open output pdf for preview by the user
 
-
+    def mergeJpg(self):
+        folderName = self.Line[1].getEntry('dir')
+        outname = os.path.join(self.Line[-2].getEntry('dir'), self.Line[-2].getEntry('out')) + '.pdf'
+        if os.path.exists(outname): # handle file overwriting
+            choice = messagebox.askyesnocancel("PDF Merger","Do you want to overwrite "+outname+" ?\n(Choosing no will create the file with a different name)")
+            if choice is None:
+                return
+            elif not choice:
+                i = 1
+                while os.path.exists(os.path.join(self.Line[-2].getEntry('dir'), self.Line[-2].getEntry('out')) + '_'+ str(i) +'.pdf'):
+                    i+=1
+                outname = os.path.join(self.Line[-2].getEntry('dir'), self.Line[-2].getEntry('out')) + '_'+ str(i) +'.pdf'
+        with open(outname + '.temp', "wb") as f:
+            f.write(img2pdf.convert([folderName+'\\'+i for i in os.listdir(folderName) if i.endswith(".jpg")]))
+            f.close()
+            try:
+                os.replace(outname + '.temp', outname)
+            except:
+                os.remove(outname+'.temp')
+                messagebox.showerror('Error','Error overwriting file:\n'+outname+'\nMake sure the file isn\'t open elsewhere')
+                return
+        subprocess.Popen(outname, shell=True)  # open output pdf for preview by the user
+        
+        
 # main tkinter loop        
 root = ThemedTk()
 root.title("PDF Merger")
