@@ -314,7 +314,7 @@ class Application(Frame):
                     i+=1
                 outname = os.path.join(self.Line[-2].getEntry('dir'), self.Line[-2].getEntry('out')) + '_'+ str(i) +'.pdf'
         with open(outname + '.temp', "wb") as f:
-            f.write(img2pdf.convert([folderName+'\\'+i for i in os.listdir(folderName) if i.endswith(".jpg")]))
+            f.write(img2pdf.convert([folderName+'\\'+i for i in os.listdir(folderName) if i.endswith((".jpg",".JPG",".png",".PNG",".JPEG",".jpeg"))]))
             f.close()
             try:
                 os.replace(outname + '.temp', outname)
